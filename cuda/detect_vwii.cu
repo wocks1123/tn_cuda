@@ -25,7 +25,7 @@ public:
     {
     }
 
-    PathNode(int _videoId, int _score) : prevTimestamp(-1), prevQueryIdx(-1), videoId(_videoId), score(_score)
+    PathNode(int _videoId, float _score) : prevTimestamp(-1), prevQueryIdx(-1), videoId(_videoId), score(_score)
     {
     }
 };

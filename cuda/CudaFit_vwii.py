@@ -52,7 +52,6 @@ class CudaFit_vwii():
 
         ref_index, ref_score, video_idx, K, L, idx_table = self.__get_parameters(_ref_index, _ref_score)
 
-
         # print("ref_index", ref_index)
         # print("ref_score", ref_score)
         # print("video_idx", video_idx)
@@ -83,7 +82,6 @@ class CudaFit_vwii():
         p_result_score = result_score.ctypes.data_as(POINTER(c_float))
         #################################################################################
 
-
         kernel_func(
             p_ref_index,
             p_ref_score,
@@ -102,14 +100,11 @@ class CudaFit_vwii():
             p_result_score
         )
 
-
         # print("result_match", result_match)
         # print("result_ref_path", result_ref_path)
         # print("result_query_path", result_query_path)
         # print("result_score_path", result_score_path)
         # print("result_score", result_score)
-
-
 
         ret = []
 
@@ -191,8 +186,6 @@ class CudaFit_vwii():
         print("video_idx", video_idx)
         print("idx_table", idx_table)
 
-
-
         dll = CDLL("cuda/detect_vwii.so")
         kernel_func = dll.foo
 
@@ -213,37 +206,3 @@ class CudaFit_vwii():
         )
 
         print("ref_index", ref_index)
-
-
-if __name__ == "__main__":
-    tn_param = {'TOP_K': 64,
-                'SCORE_THR': 0.7,
-                'TEMP_WND': 5,
-                'MIN_MATCH': 5}
-
-    idx = [
-        [
-            [1, [1, 2, 3]], [2, [2, 3, 4]], [4, [3, 4, 5]]
-        ],
-        [
-            [1, [1, 2, 3]], [2, [2, 3, 4]], [4, [3, 4, 5]], [5, [6, 5, 7]]
-        ],
-        [
-            [1, [1, 2, 3]], [2, [2, 3, 4]], [4, [3, 4, 5]]
-        ]
-    ]
-
-    score = [
-        [
-            [1, [0.1, 0.2, 0.3]], [2, [0.2, 0.3, 0.4]], [4, [0.3, 0.4, 0.5]]
-        ],
-        [
-            [1, [0.1, 0.2, 0.3]], [2, [0.2, 0.3, 0.4]], [4, [0.3, 0.4, 0.5]], [5, [0.5, 0.5, 0.5]]
-        ],
-        [
-            [1, [0.1, 0.2, 0.3]], [2, [0.2, 0.3, 0.4]], [4, [0.3, 0.4, 0.5]]
-        ]
-    ]
-
-    c = CudaFit_vwii(**tn_param)
-    c.detect_cuda(idx, score)
