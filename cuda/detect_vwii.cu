@@ -60,6 +60,9 @@ __global__ void detect_cuda_vwii(const int* d_ref_index, const float* d_ref_scor
             int prev_j = -1;    //ref timestamp
 
             int start_idx = i - tmp_wnd >= 0 ? i - tmp_wnd : 0;
+#ifdef N_DEBUG
+            //printf("start %d -> %d\n", start_idx, i);
+#endif
             for (int l = start_idx; l < i; l++)
             {
                 for (int k = 0; k < K; k++)
@@ -84,7 +87,7 @@ __global__ void detect_cuda_vwii(const int* d_ref_index, const float* d_ref_scor
                     if (prev_timestamp <= curr_timpstamp - tmp_wnd)
                         continue;
 
-                    if (max_score < prev_score + curr_score)
+                    if (max_score <= prev_score + curr_score)
                     {
                         //printf("updeted(prev score %f -> %f\n", max_score, prev_score + curr_score);
                         max_score = prev_score + curr_score;
@@ -99,7 +102,7 @@ __global__ void detect_cuda_vwii(const int* d_ref_index, const float* d_ref_scor
             ARR_I_J(d_PN, i, j).videoId = curr_videoidx;
             ARR_I_J(d_PN, i, j).score = max_score;
 
-            if (d_res_score_list[curr_videoidx] < max_score)
+            if (d_res_score_list[curr_videoidx] <= max_score)
             {
                 d_last_queryidx_list[curr_videoidx] = i;
                 d_last_timestamp_list[curr_videoidx] = j;
@@ -250,11 +253,20 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
     *   set variables
     */
     PathNode* h_PN = new PathNode[L * K];
+    //printf("update first row\n");
+    for (int i = 0; i < K; i++)
+    {
+        ARR_I_J(h_PN, 0, i).videoId = ARR_I_J(_video_idx, 0, i);
+        ARR_I_J(h_PN, 0, i).score = ARR_I_J(_ref_score, 0, i);
+        //printf("%f ", ARR_I_J(_ref_score, 0, i));
+    }
+    //printf("\n");
 
 #ifdef N_DEBUG
-    printf("====== ARR_I_J(_ref_score, i, j).score\n");
+    printf("====== ARR_I_J(_ref_score, i, j)\n");
     for (int i = 0 ; i < L; i++)
     {
+        printf("[%d]\t", i);
         for (int j = 0 ; j < K; j++)
         {
             printf("%f ", ARR_I_J(_ref_score, i, j));
@@ -262,14 +274,6 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
         printf("\n");
     }
 
-    printf("update first row\n");
-    for (int i = 0; i < K; i++)
-    {
-        ARR_I_J(h_PN, 0, i).videoId = ARR_I_J(_video_idx, 0, i);
-        ARR_I_J(h_PN, 0, i).score = ARR_I_J(_ref_score, 0, i);
-        printf("%f ", ARR_I_J(_ref_score, 0, i));
-    }
-    printf("\n");
 #endif
 
     cudaMemcpy(d_lastidx_list, h_listidx_list, K *sizeof(int), cudaMemcpyHostToDevice);
@@ -331,6 +335,18 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
     cudaMemcpy(result_score_path, d_res_scores, L * video_num * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(score, d_maxscore_list, video_num * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(match, d_match, video_num * sizeof(int), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_ref_index);
+    cudaFree(d_ref_score);
+    cudaFree(d_video_idx);
+    cudaFree(d_PN);
+    cudaFree(d_lastidx_list);
+    cudaFree(d_last_queryidx_list);
+    cudaFree(d_maxscore_list);
+    cudaFree(d_res_q);
+    cudaFree(d_res_p);
+    cudaFree(d_res_scores);
+    cudaFree(d_match);
 
 #ifdef N_DEBUG
     printf("=== ARR_I_J(h_PN, i, j).score\n");

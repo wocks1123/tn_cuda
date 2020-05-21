@@ -112,17 +112,21 @@ class CudaFit_vwii():
             if result_match[i] <= self.MATCH_CNT:
                 continue
 
-            query_index = result_ref_path[i][:result_match[i]]
-            path = result_query_path[i][:result_match[i]]
+            query_index = result_query_path[i][:result_match[i]]
+            path = result_ref_path[i][:result_match[i]]
             score_path = result_score_path[i][:result_match[i]]
+
+            if query_index[0] < 0:
+                continue
+
             a = [
                 idx_table[i],
                 {
                     # "query_index": query_index,
-                    # "score_path": score_path,
                     # "path": path,
-                    "Query": Period(query_index[0], query_index[-1] + 1),
-                    "Ref": Period(path[0], path[-1] + 1),
+                    # "score_path": score_path,
+                    "query": Period(query_index[0], query_index[-1] + 1),
+                    "ref": Period(path[0], path[-1] + 1),
                     "match": result_match[i],
                     # "score": result_score[i]
                     "score": sum(score_path)
@@ -135,7 +139,6 @@ class CudaFit_vwii():
 
     def __convert_parameters(self, idx, score):
         """
-
         :param _ref_index:
         :param _ref_score:
         :return:
