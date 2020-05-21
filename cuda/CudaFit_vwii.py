@@ -11,8 +11,8 @@ from utils.Period import Period
 
 
 class CudaFit_vwii():
-    def __init__(self, TOP_K=-1, SCORE_THR=0.8, TEMP_WND=5, MIN_MATCH=5):
-        self.TOP_K = TOP_K              # -1 = all
+    def __init__(self, TOP_K=20, SCORE_THR=0, TEMP_WND=5, MIN_MATCH=10):
+        self.TOP_K = TOP_K              # all = -1
         self.SCORE_THR = SCORE_THR
         self.MATCH_CNT = MIN_MATCH
         self.TMP_WND = TEMP_WND
@@ -50,7 +50,7 @@ class CudaFit_vwii():
         ]
         #################################################################################
 
-        ref_index, ref_score, video_idx, K, L, idx_table = self.__get_parameters(_ref_index, _ref_score)
+        ref_index, ref_score, video_idx, K, L, idx_table = self.__convert_parameters(_ref_index, _ref_score)
 
         # print("ref_index", ref_index)
         # print("ref_score", ref_score)
@@ -133,13 +133,15 @@ class CudaFit_vwii():
 
         return ret
 
-    def __get_parameters(self, idx, score):
+    def __convert_parameters(self, idx, score):
         """
 
         :param _ref_index:
         :param _ref_score:
         :return:
         """
+        idx = [[[vid_id, frames[:self.TOP_K]] for vid_id, frames in _row] for _row in idx]
+        score = [[[vid_id, frames[:self.TOP_K]] for vid_id, frames in _row] for _row in score]
 
         ref_index = []
         ref_score = []
@@ -179,7 +181,7 @@ class CudaFit_vwii():
         """
         for test...
         """
-        ref_index, ref_score, video_idx, K, L, idx_table = self.__get_parameters(_ref_index, _ref_score)
+        ref_index, ref_score, video_idx, K, L, idx_table = self.__convert_parameters(_ref_index, _ref_score)
 
         print("ref_index", ref_index)
         print("ref_score", ref_score)
