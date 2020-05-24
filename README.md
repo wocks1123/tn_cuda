@@ -1,6 +1,6 @@
 # Temporal Network CUDA imp
 
-필요 파일
+## 필요 파일
 
 ```bash
 cuda/detect.cu
@@ -8,18 +8,36 @@ cuda/detect_vwii.cu
 cuda/CudaFit.py
 cuda/CudaFit_vwii.py
 ```
- 
-컴파일
- 
+
+
+
+## 컴파일 
+
  ```bash
 nvcc --ptxas-options=-v --compiler-options '-fPIC' -o cuda/detect.so --shared cuda/detect.cu
 nvcc --ptxas-options=-v --compiler-options '-fPIC' -o cuda/detect_vwii.so --shared cuda/detect_vwii.cu 
-```
- 
-사용법
+ ```
 
 - .cu 컴파일해서 .so 파일 생성
 - `CudaFit` 클래스의 `__init__`에 `self.LIB_PATH`를 생성한 .so파일로 지정
+
+```python
+# 생성자에서
+class CudaFit():
+    def __init__(self, TOP_K=-1, SCORE_THR = 0.8, TEMP_WND=5, MIN_MATCH=5):
+        # ...
+        self.LIB_PATH = "cuda/detect.so" # <- 여기에 생성된 .so파일 경로 지정
+```
+
+
+
+## 사용법
+
+- `main.py`에 실행 예제 코드 참고
+
+
+
+기본 예시
 
 ```python
 # CudaFit

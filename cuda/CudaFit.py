@@ -11,6 +11,7 @@ from ctypes import *
 from utils.Period import Period
 import copy
 
+
 class CudaFit():
     def __init__(self, TOP_K=-1, SCORE_THR = 0.8, TEMP_WND=5, MIN_MATCH=5):
         self.TOP_K = TOP_K
