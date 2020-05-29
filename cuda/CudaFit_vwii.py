@@ -143,24 +143,24 @@ class CudaFit_vwii():
         :param _ref_score:
         :return:
         """
-        idx = [[[vid_id, frames[:self.TOP_K]] for vid_id, frames in _row] for _row in idx]
-        score = [[[vid_id, frames[:self.TOP_K]] for vid_id, frames in _row] for _row in score]
+        _idx = [[[vid_id, frames[:self.TOP_K]] for vid_id, frames in _row] for _row in idx]
+        _score = [[[vid_id, frames[:self.TOP_K]] for vid_id, frames in _row] for _row in score]
 
         ref_index = []
         ref_score = []
         video_idx = []
         idx_table = []
-        for i in range(len(idx)):
+        for i in range(len(_idx)):
             ref_index_row = []
             ref_score_row = []
             video_idx_row = []
-            for j in range(len(idx[i])):
-                curr_vid_id, idx_list = idx[i][j]  # [video_idx, [timestamp, ...]]
+            for j in range(len(_idx[i])):
+                curr_vid_id, idx_list = _idx[i][j]  # [video_idx, [timestamp, ...]]
                 if curr_vid_id not in idx_table:
                     idx_table.append(curr_vid_id)
                 for k in range(len(idx_list)):
-                    ref_index_row.append(idx[i][j][1][k])
-                    ref_score_row.append(score[i][j][1][k])
+                    ref_index_row.append(_idx[i][j][1][k])
+                    ref_score_row.append(_score[i][j][1][k])
                     video_idx_row.append(idx_table.index(curr_vid_id))
 
             ref_index.append(ref_index_row)
@@ -168,7 +168,7 @@ class CudaFit_vwii():
             video_idx.append(video_idx_row)
 
         K = max([len(r) for r in ref_index])
-        L = len(idx)
+        L = len(_idx)
 
         for i in range(len(ref_index)):
             curr_row_len = len(ref_index[i])

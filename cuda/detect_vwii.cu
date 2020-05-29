@@ -35,7 +35,14 @@ __global__ void detect_cuda_vwii(const int* d_ref_index, const float* d_ref_scor
 )
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int len = tid + offset; //각 thread가 처리할 갯수
+    int s_idx = tid * offset;
+    int e_idx = s_idx + offset;
+    if (e_idx > K)
+        e_idx = K;
+
+#ifdef N_DEBUG
+    printf("[tid:%d] %d ~ %d(%d)\n", tid, s_idx, e_idx, offset);
+#endif
 
     if (tid >= K)
     {
@@ -44,7 +51,7 @@ __global__ void detect_cuda_vwii(const int* d_ref_index, const float* d_ref_scor
 
     for (int i = 1; i < L; i++)
     {
-        for (int j = tid; j < len; j++)
+        for (int j = s_idx; j < e_idx; j++)
         {
             int curr_videoidx = ARR_I_J(d_video_idx, i, j);
             if (curr_videoidx == -1)
@@ -147,14 +154,21 @@ __global__ void update_result(const int* d_ref_index, const float* d_ref_score, 
 {
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int len = tid + offset; //각 thread가 처리할 갯수
+    int s_idx = tid * offset;
+    int e_idx = s_idx + offset;
+    if (e_idx > video_num)
+        e_idx = video_num;
+
+#ifdef N_DEBUG
+    printf("[tid:%d]update_result %d ~ %d(%d) %d\n", tid, s_idx, e_idx, offset , video_num);
+#endif
 
     if (tid >= K)
     {
         return;
     }
 
-    for(int t = tid; t < len; t++)
+    for(int t = s_idx; t < e_idx; t++)
     {
 
 
@@ -263,6 +277,8 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
     //printf("\n");
 
 #ifdef N_DEBUG
+    printf("K : %d\n", K);
+    printf("vidnum : %d\n", video_num);
     printf("====== ARR_I_J(_ref_score, i, j)\n");
     for (int i = 0 ; i < L; i++)
     {
@@ -276,13 +292,13 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
 
 #endif
 
-    cudaMemcpy(d_lastidx_list, h_listidx_list, K *sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_last_queryidx_list, h_queryidx_list, K *sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_maxscore_list, h_maxscore_list, K *sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_lastidx_list, h_listidx_list, K * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_last_queryidx_list, h_queryidx_list, K * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_maxscore_list, h_maxscore_list, K * sizeof(int), cudaMemcpyHostToDevice);
 
-    cudaMemcpy(d_ref_index, _ref_index, L * K *sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_ref_score, _ref_score, L * K *sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_video_idx, _video_idx, L * K *sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_ref_index, _ref_index, L * K * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_ref_score, _ref_score, L * K * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_video_idx, _video_idx, L * K * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_PN, h_PN, L * K * sizeof(PathNode), cudaMemcpyHostToDevice);
 
     cudaMemcpy(d_res_q, res_q, L * video_num * sizeof(int), cudaMemcpyHostToDevice);
@@ -291,6 +307,8 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
     cudaMemcpy(d_match, match, video_num * sizeof(int), cudaMemcpyHostToDevice);
 
     int offset = K / (n_block * n_thread);
+    if (offset && K % (n_block * n_thread) != 0)
+        offset += 1;
     offset = offset ? offset : 1;
 
     detect_cuda_vwii<<<n_block, n_thread>>>(
@@ -307,7 +325,11 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
         d_maxscore_list
     );
 
+    offset = video_num / (n_block * n_thread);
+    if (offset && video_num % (n_block * n_thread) != 0)
+        offset += 1;
 
+    offset = offset ? offset : 1;
     update_result<<<n_block, n_thread>>>(
         d_ref_index,
         d_ref_score,
