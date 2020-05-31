@@ -230,6 +230,7 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
                 int* res_q, int* res_p, float* result_score_path, int* match, float* score)
 {
 
+    //printf("call_kernel called! L : %d K : %d vn : %d\n",L, K, video_num);
     int* h_listidx_list = (int*)calloc(K, sizeof(int));
     int* h_queryidx_list = (int*)calloc(K, sizeof(int));
     float* h_maxscore_list = (float*)calloc(K, sizeof(float));
@@ -254,9 +255,9 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
     cudaMalloc((void**)&d_ref_score, L * K * sizeof(float));
     cudaMalloc((void**)&d_video_idx, L * K * sizeof(int));
     cudaMalloc((void**)&d_PN, L * K * sizeof(PathNode));
-    cudaMalloc((void**)&d_lastidx_list, K * sizeof(int));
-    cudaMalloc((void**)&d_last_queryidx_list, K * sizeof(int));
-    cudaMalloc((void**)&d_maxscore_list, K * sizeof(float));
+    cudaMalloc((void**)&d_lastidx_list, video_num * sizeof(int));
+    cudaMalloc((void**)&d_last_queryidx_list, video_num * sizeof(int));
+    cudaMalloc((void**)&d_maxscore_list, video_num * sizeof(float));
     cudaMalloc((void**)&d_res_q, L * video_num * sizeof(int));
     cudaMalloc((void**)&d_res_p, L * video_num * sizeof(int));
     cudaMalloc((void**)&d_res_scores, L * video_num * sizeof(float));
@@ -310,6 +311,8 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
     if (offset && K % (n_block * n_thread) != 0)
         offset += 1;
     offset = offset ? offset : 1;
+
+    cudaDeviceSynchronize();
 
     detect_cuda_vwii<<<n_block, n_thread>>>(
         d_ref_index,
@@ -403,7 +406,7 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
     printf("===match\n");
     for (int j = 0 ; j < video_num; j++)
     {
-        printf("%d ", match[j]);
+        printf("%d(%d) ", match[j], j);
     }
     printf("\n");
     printf("===res_p\n");
