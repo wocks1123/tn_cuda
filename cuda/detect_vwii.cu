@@ -94,7 +94,7 @@ __global__ void detect_cuda_vwii(const int* d_ref_index, const float* d_ref_scor
                     if (prev_timestamp <= curr_timpstamp - tmp_wnd)
                         continue;
 
-                    if (max_score <= prev_score + curr_score)
+                    if (max_score < prev_score + curr_score)
                     {
                         //printf("updeted(prev score %f -> %f\n", max_score, prev_score + curr_score);
                         max_score = prev_score + curr_score;
@@ -328,50 +328,7 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
         d_maxscore_list
     );
 
-    offset = video_num / (n_block * n_thread);
-    if (offset && video_num % (n_block * n_thread) != 0)
-        offset += 1;
-
-    offset = offset ? offset : 1;
-    update_result<<<n_block, n_thread>>>(
-        d_ref_index,
-        d_ref_score,
-        d_video_idx,
-        d_PN,
-        L,
-        K,
-        video_num,
-        d_lastidx_list,
-        d_last_queryidx_list,
-        d_maxscore_list,
-        offset,
-        d_res_q,
-        d_res_p,
-        d_res_scores,
-        d_match
-    );
-
-    //cudaMemcpy(_ref_index, d_ref_index, L * K * sizeof(int), cudaMemcpyDeviceToHost);
-    //cudaMemcpy(_ref_score, d_ref_score, L * K * sizeof(float), cudaMemcpyDeviceToHost);
-    //cudaMemcpy(_video_idx, d_video_idx, L * K * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_PN, d_PN, L * K * sizeof(PathNode), cudaMemcpyDeviceToHost);
-    cudaMemcpy(res_q, d_res_q, L * video_num * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(res_p, d_res_p, L * video_num * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(result_score_path, d_res_scores, L * video_num * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(score, d_maxscore_list, video_num * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(match, d_match, video_num * sizeof(int), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_ref_index);
-    cudaFree(d_ref_score);
-    cudaFree(d_video_idx);
-    cudaFree(d_PN);
-    cudaFree(d_lastidx_list);
-    cudaFree(d_last_queryidx_list);
-    cudaFree(d_maxscore_list);
-    cudaFree(d_res_q);
-    cudaFree(d_res_p);
-    cudaFree(d_res_scores);
-    cudaFree(d_match);
+    cudaDeviceSynchronize();
 
 #ifdef N_DEBUG
     printf("=== ARR_I_J(h_PN, i, j).score\n");
@@ -419,6 +376,55 @@ void call_kernel(int* _ref_index, float* _ref_score, int* _video_idx, int L, int
         printf("\n");
     }
 #endif
+
+
+    offset = video_num / (n_block * n_thread);
+    if (offset && video_num % (n_block * n_thread) != 0)
+        offset += 1;
+
+    offset = offset ? offset : 1;
+    update_result<<<n_block, n_thread>>>(
+        d_ref_index,
+        d_ref_score,
+        d_video_idx,
+        d_PN,
+        L,
+        K,
+        video_num,
+        d_lastidx_list,
+        d_last_queryidx_list,
+        d_maxscore_list,
+        offset,
+        d_res_q,
+        d_res_p,
+        d_res_scores,
+        d_match
+    );
+
+    cudaDeviceSynchronize();
+
+    //cudaMemcpy(_ref_index, d_ref_index, L * K * sizeof(int), cudaMemcpyDeviceToHost);
+    //cudaMemcpy(_ref_score, d_ref_score, L * K * sizeof(float), cudaMemcpyDeviceToHost);
+    //cudaMemcpy(_video_idx, d_video_idx, L * K * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_PN, d_PN, L * K * sizeof(PathNode), cudaMemcpyDeviceToHost);
+    cudaMemcpy(res_q, d_res_q, L * video_num * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(res_p, d_res_p, L * video_num * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(result_score_path, d_res_scores, L * video_num * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(score, d_maxscore_list, video_num * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(match, d_match, video_num * sizeof(int), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_ref_index);
+    cudaFree(d_ref_score);
+    cudaFree(d_video_idx);
+    cudaFree(d_PN);
+    cudaFree(d_lastidx_list);
+    cudaFree(d_last_queryidx_list);
+    cudaFree(d_maxscore_list);
+    cudaFree(d_res_q);
+    cudaFree(d_res_p);
+    cudaFree(d_res_scores);
+    cudaFree(d_match);
+
 }
 
 void foo(int* arr2d, int L, int K)
