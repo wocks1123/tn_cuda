@@ -91,8 +91,8 @@ __global__ void detect_cuda_vwii(const int* d_ref_index, const float* d_ref_scor
                     if (prev_timestamp >= curr_timpstamp)
                         continue;
 
-                    if (prev_timestamp <= curr_timpstamp - tmp_wnd)
-                        continue;
+                    //if (prev_timestamp <= curr_timpstamp - tmp_wnd)
+                        //continue;
 
                     if (max_score < prev_score + curr_score)
                     {
