@@ -85,6 +85,79 @@ class CudaFit():
         return ret
 
 
+    # def detect_cuda(self, _ref_index, _ref_score, _n_block=1, _n_thread=64):
+    #     L = len(_ref_index)
+    #     K = self.TOP_K if self.TOP_K < len(_ref_index[0]) else len(_ref_index[0])
+    #
+    #     ref_index = copy.deepcopy(_ref_index)
+    #     ref_score = copy.deepcopy(_ref_score)
+    #
+    #     if K != len(_ref_index[0]):
+    #         ref_index = np.array(_ref_index)[:, :K]
+    #         ref_score = np.array(_ref_score)[:, :K]
+    #
+    #     for i in range(0, L):
+    #         for j in range(0, K):
+    #             if ref_score[i][j] < self.SCORE_THR:
+    #                 ref_score[i][j] = 0
+    #
+    #     class RESULT(Structure):
+    #         _fields_ = [("score", c_float), ("match", c_int)]
+    #
+    #     dll = CDLL(self.LIB_PATH)
+    #     kernel_func = dll.call_kernel
+    #     kernel_func.argtypes = [
+    #         POINTER(c_int),
+    #         POINTER(c_float),
+    #         c_size_t,
+    #         c_size_t,
+    #         c_float,
+    #         c_int,
+    #         POINTER(c_int),
+    #         POINTER(c_int),
+    #         c_int,
+    #         c_int,
+    #         POINTER(RESULT)
+    #     ]
+    #
+    #     ref_index = np.array(ref_index).astype("int32")
+    #     ref_score = np.array(ref_score).astype("float32")
+    #     query_index = np.full(L, -1).astype("int32")
+    #     path = np.full(L, -1).astype("int32")
+    #     result = RESULT()
+    #
+    #     p_ref_index = ref_index.ctypes.data_as(POINTER(c_int))
+    #     p_ref_score = ref_score.ctypes.data_as(POINTER(c_float))
+    #     p_query_index = query_index.ctypes.data_as(POINTER(c_int))
+    #     p_path = path.ctypes.data_as(POINTER(c_int))
+    #     p_result = ctypes.byref(result)
+    #
+    #     kernel_func(p_ref_index, p_ref_score, L, K, self.SCORE_THR, self.TMP_WND, p_query_index, p_path, _n_block, _n_thread, p_result)
+    #
+    #     path = path[:result.match]
+    #     query_index = query_index[:result.match]
+    #
+    #     if result.match <= self.MATCH_CNT:
+    #         return []
+    #
+    #     if result.score == 0:
+    #         return []
+    #
+    #     # print("query_index", query_index)
+    #     # print("max_path", path)
+    #     # print("max_weight", result.score)
+    #
+    #     dict = {
+    #         "Query" : Period(query_index[0], query_index[-1] + 1),
+    #         "query_index": query_index,
+    #         "Ref" : Period(path[0], path[-1] + 1),
+    #         "ref_index": path,
+    #         "match" : result.match,
+    #         "score" : result.score
+    #     }
+    #
+    #     return [dict]
+
     def detect_cuda(self, _ref_index, _ref_score, _n_block=1, _n_thread=64):
         L = len(_ref_index)
         K = self.TOP_K if self.TOP_K < len(_ref_index[0]) else len(_ref_index[0])
@@ -105,26 +178,56 @@ class CudaFit():
             _fields_ = [("score", c_float), ("match", c_int)]
 
         dll = CDLL(self.LIB_PATH)
-        kernel_func = dll.call_kernel
-        kernel_func.argtypes = [POINTER(c_int), POINTER(c_float), c_size_t, c_size_t, c_float, c_int, POINTER(c_int), POINTER(c_int),
-                         c_int, c_int ,POINTER(RESULT)]
+        kernel_func = dll.call_kernel2
+        kernel_func.argtypes = [
+            POINTER(c_int),     # idx
+            POINTER(c_float),   # score
+            c_int,      # L
+            c_int,      # K
+            c_float,    # score_thr
+            c_int,      # temp_wnd
+            c_int,      # n_block
+            c_int,      # n_thread
+            POINTER(c_int), # res query
+            POINTER(c_int),  # res path
+            POINTER(c_float),  # res score path
+            POINTER(RESULT)
+        ]
 
         ref_index = np.array(ref_index).astype("int32")
         ref_score = np.array(ref_score).astype("float32")
         query_index = np.full(L, -1).astype("int32")
         path = np.full(L, -1).astype("int32")
+        score_path = np.full(L, -1).astype("float32")
         result = RESULT()
 
         p_ref_index = ref_index.ctypes.data_as(POINTER(c_int))
         p_ref_score = ref_score.ctypes.data_as(POINTER(c_float))
         p_query_index = query_index.ctypes.data_as(POINTER(c_int))
         p_path = path.ctypes.data_as(POINTER(c_int))
+        p_score_path = score_path.ctypes.data_as(POINTER(c_float))
         p_result = ctypes.byref(result)
 
-        kernel_func(p_ref_index, p_ref_score, L, K, self.SCORE_THR, self.TMP_WND, p_query_index, p_path, _n_block, _n_thread, p_result)
+        kernel_func(
+            p_ref_index,
+            p_ref_score,
+            L,
+            K,
+            self.SCORE_THR,
+            self.TMP_WND,
+            _n_block,
+            _n_thread,
+            p_query_index,
+            p_path,
+            p_score_path,
+            p_result
+        )
 
         path = path[:result.match]
         query_index = query_index[:result.match]
+
+        # print("path", path)
+        # print("query_index", query_index)
 
         if result.match <= self.MATCH_CNT:
             return []
@@ -138,9 +241,9 @@ class CudaFit():
 
         dict = {
             "Query" : Period(query_index[0], query_index[-1] + 1),
-            #"query_index": query_index,
+            "query_index": query_index,
             "Ref" : Period(path[0], path[-1] + 1),
-            #"ref_index": path,
+            "ref_index": path,
             "match" : result.match,
             "score" : result.score
         }
